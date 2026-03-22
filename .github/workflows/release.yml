@@ -147,17 +147,27 @@ jobs:
       - name: Update versions
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          for dir in npm/grep4ai npm/grep4ai-win32-x64 npm/grep4ai-linux-x64 npm/grep4ai-linux-arm64 npm/grep4ai-darwin-x64 npm/grep4ai-darwin-arm64; do
+          for dir in npm/grep4ai npm/grep4ai-win32-x64 npm/grep4ai-linux-x64 npm/grep4ai-linux-arm64 npm/grep4ai-darwin-x64 npm/grep4ai-darwin-arm64 mcp; do
             cd $dir
             npm version $VERSION --no-git-tag-version --allow-same-version
             cd $GITHUB_WORKSPACE
           done
-          # Also update optionalDependencies versions in main package
+          # Update optionalDependencies versions in main package
           cd npm/grep4ai
           node -e "
             const pkg = require('./package.json');
             for (const dep of Object.keys(pkg.optionalDependencies || {})) {
               pkg.optionalDependencies[dep] = '$VERSION';
+            }
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          cd $GITHUB_WORKSPACE
+          # Update @grep4ai/cli dependency version in MCP package
+          cd mcp
+          node -e "
+            const pkg = require('./package.json');
+            if (pkg.dependencies && pkg.dependencies['@grep4ai/cli']) {
+              pkg.dependencies['@grep4ai/cli'] = '>=$VERSION';
             }
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
@@ -179,3 +189,10 @@ jobs:
         run: |
           cd npm/grep4ai
           npm publish --access public --provenance
+
+      - name: Publish MCP server
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd mcp
+          npm publish --access public --provenance || echo "Already published, skipping"

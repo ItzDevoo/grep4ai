@@ -30,10 +30,11 @@
   "files": [
     "bin",
     "install.js",
+    "postinstall-msg.js",
     "README.md"
   ],
   "scripts": {
-    "postinstall": "node install.js"
+    "postinstall": "node install.js && node postinstall-msg.js"
   },
   "optionalDependencies": {
     "@grep4ai/win32-x64": "0.4.1",

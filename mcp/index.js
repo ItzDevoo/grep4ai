@@ -40,7 +40,20 @@ function findBinary() {
 
   // 2. Check common install locations
   const candidates = [
+    // Bundled via @grep4ai/cli dependency (npx / node_modules)
+    path.join(__dirname, "node_modules", "@grep4ai", "cli", "bin", name),
+    path.join(__dirname, "..", "..", "@grep4ai", "cli", "bin", name),
     // npm global install
+    path.join(
+      process.env.APPDATA || "",
+      "npm",
+      "node_modules",
+      "@grep4ai",
+      "cli",
+      "bin",
+      name
+    ),
+    // Legacy unscoped npm global
     path.join(
       process.env.APPDATA || "",
       "npm",

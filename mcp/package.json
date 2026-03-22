@@ -1,7 +1,7 @@
 {
-  "name": "grep4ai-mcp",
+  "name": "@grep4ai/mcp",
   "version": "0.4.1",
-  "description": "MCP server for grep4ai — AI-native code search",
+  "description": "MCP server for grep4ai — give your AI agent the fastest code search tool",
   "main": "index.js",
   "bin": {
     "grep4ai-mcp": "index.js"
@@ -9,10 +9,26 @@
   "scripts": {
     "start": "node index.js"
   },
-  "keywords": ["mcp", "grep", "ai", "search", "code-search"],
+  "keywords": ["mcp", "grep", "ai", "search", "code-search", "claude", "cursor", "agent", "llm"],
   "author": "CLI Anything",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ItzDevoo/grep4ai"
+  },
+  "homepage": "https://github.com/ItzDevoo/grep4ai#readme",
+  "bugs": {
+    "url": "https://github.com/ItzDevoo/grep4ai/issues"
+  },
+  "files": [
+    "index.js"
+  ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1"
+    "@grep4ai/cli": ">=0.4.1",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "zod": "^3.23.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
