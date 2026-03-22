@@ -189,9 +189,9 @@ server.tool(
 // Quick find definitions tool — convenience wrapper
 server.tool(
   "find_definitions",
-  "Find definitions (functions, classes, structs, types) matching a name. Optimized shortcut that searches with ranking enabled and returns only definition-like matches.",
+  "Find definitions (functions, classes, structs, types) matching a symbol name. Pass the actual identifier, not a description — e.g., 'BudgetEnforcer' not 'token budget'. Uses regex to match common definition keywords followed by the name.",
   {
-    name: z.string().describe("The name to find definitions for (e.g., 'authenticate', 'UserConfig')"),
+    name: z.string().describe("The actual symbol/identifier name to find (e.g., 'BudgetEnforcer', 'authenticate', 'UserConfig'). Must be the code identifier, not a concept description."),
     paths: z.array(z.string()).optional().describe("Directories to search (default: current directory)"),
     file_type: z.array(z.string()).optional().describe("Limit to specific file types"),
     token_budget: z.number().optional().describe("Maximum tokens in output"),
