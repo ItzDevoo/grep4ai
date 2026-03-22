@@ -5,7 +5,7 @@ AI-native code search — structured JSON output, relevance ranking, token budge
 ## Install
 
 ```bash
-npm install -g grep4ai
+npm install -g @grep4ai/cli
 ```
 
 Or build from source:
