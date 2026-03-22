@@ -36,11 +36,11 @@
     "postinstall": "node install.js"
   },
   "optionalDependencies": {
-    "@grepit/win32-x64": "0.1.0",
-    "@grepit/linux-x64": "0.1.0",
-    "@grepit/linux-arm64": "0.1.0",
-    "@grepit/darwin-x64": "0.1.0",
-    "@grepit/darwin-arm64": "0.1.0"
+    "grepit-win32-x64": "0.1.0",
+    "grepit-linux-x64": "0.1.0",
+    "grepit-linux-arm64": "0.1.0",
+    "grepit-darwin-x64": "0.1.0",
+    "grepit-darwin-arm64": "0.1.0"
   },
   "engines": {
     "node": ">=14"

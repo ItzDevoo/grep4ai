@@ -1,5 +1,5 @@
 {
-  "name": "@grepit/linux-x64",
+  "name": "grepit-linux-x64",
   "version": "0.1.0",
   "description": "grepit native binary for Linux x64",
   "os": ["linux"],

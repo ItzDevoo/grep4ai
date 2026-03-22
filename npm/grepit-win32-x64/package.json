@@ -1,5 +1,5 @@
 {
-  "name": "@grepit/win32-x64",
+  "name": "grepit-win32-x64",
   "version": "0.1.0",
   "description": "grepit native binary for Windows x64",
   "os": ["win32"],
