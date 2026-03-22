@@ -10,6 +10,8 @@ pub struct SignalSet {
     pub word_boundary: f32,
     /// Score based on path quality (penalizes test/vendor dirs).
     pub path_relevance: f32,
+    /// Boost when the file path contains tokens from the query.
+    pub query_path_boost: f32,
     /// Score based on file type (source > config > docs).
     pub file_type: f32,
     /// Score based on line position (top of file = slight boost).
@@ -20,10 +22,11 @@ pub struct SignalSet {
 
 impl SignalSet {
     /// Compute all signals for a given match.
-    pub fn compute(raw: &RawMatch) -> Self {
+    pub fn compute(raw: &RawMatch, query: &str) -> Self {
         Self {
             word_boundary: compute_word_boundary(raw),
             path_relevance: compute_path_relevance(&raw.path),
+            query_path_boost: compute_query_path_boost(&raw.path, query),
             file_type: compute_file_type_score(&raw.path),
             line_position: compute_line_position(raw),
             is_definition: compute_definition_signal(raw),
@@ -32,19 +35,66 @@ impl SignalSet {
 
     /// Combine signals into a final score using weighted sum.
     pub fn score(&self) -> f32 {
-        const W_WORD: f32 = 0.15;
-        const W_PATH: f32 = 0.25;
+        const W_WORD: f32 = 0.10;
+        const W_PATH: f32 = 0.15;
+        const W_QPATH: f32 = 0.15;
         const W_TYPE: f32 = 0.10;
         const W_LINE: f32 = 0.05;
         const W_DEF: f32 = 0.45;
 
         let raw = W_WORD * self.word_boundary
             + W_PATH * self.path_relevance
+            + W_QPATH * self.query_path_boost
             + W_TYPE * self.file_type
             + W_LINE * self.line_position
             + W_DEF * self.is_definition;
 
         raw.clamp(0.0, 1.0)
+    }
+
+    /// Human-readable explanation of why this result scored the way it did.
+    pub fn explain(&self) -> Vec<String> {
+        let mut reasons = Vec::new();
+
+        if self.is_definition >= 0.8 {
+            reasons.push("definition (fn/class/struct/type declaration)".to_string());
+        } else if self.is_definition >= 0.5 {
+            reasons.push("likely definition (arrow fn / assignment)".to_string());
+        }
+
+        if self.query_path_boost >= 0.8 {
+            reasons.push("file path strongly matches query".to_string());
+        } else if self.query_path_boost >= 0.4 {
+            reasons.push("file path partially matches query".to_string());
+        }
+
+        if self.path_relevance <= 0.2 {
+            reasons.push("penalized: vendor/generated path".to_string());
+        } else if self.path_relevance <= 0.5 {
+            reasons.push("penalized: test/example path".to_string());
+        } else if self.path_relevance >= 0.9 {
+            reasons.push("core source path (src/lib/core)".to_string());
+        }
+
+        if self.word_boundary >= 0.9 {
+            reasons.push("exact word match".to_string());
+        }
+
+        if self.line_position >= 0.9 {
+            reasons.push("near top of file (declaration zone)".to_string());
+        }
+
+        if self.file_type >= 0.9 {
+            reasons.push("source code file".to_string());
+        } else if self.file_type <= 0.4 {
+            reasons.push("non-source file (config/docs)".to_string());
+        }
+
+        if reasons.is_empty() {
+            reasons.push("general match".to_string());
+        }
+
+        reasons
     }
 }
 
@@ -105,6 +155,39 @@ fn compute_path_relevance(path: &Path) -> f32 {
     score.clamp(0.0, 1.0)
 }
 
+/// Boost files whose path contains tokens from the search query.
+/// If the query is "authenticate", a file at `src/auth/handler.rs` scores higher.
+fn compute_query_path_boost(path: &Path, query: &str) -> f32 {
+    let path_str = path.to_str().unwrap_or("").to_lowercase();
+
+    // Extract meaningful tokens from the query (split on non-alphanumeric, filter short ones)
+    let query_lower = query.to_lowercase();
+    let tokens: Vec<&str> = query_lower
+        .split(|c: char| !c.is_alphanumeric() && c != '_')
+        .filter(|t| t.len() >= 3) // skip short tokens like "fn", "if"
+        .collect();
+
+    if tokens.is_empty() {
+        return 0.0;
+    }
+
+    let mut hits = 0;
+    for token in &tokens {
+        if path_str.contains(token) {
+            hits += 1;
+        }
+        // Also check if the query token is a substring of a path component
+        // e.g., query "authenticate" matches path "auth/"
+        if token.len() >= 4 && path_str.contains(&token[..token.len().min(4)]) {
+            hits += 1;
+        }
+    }
+
+    let max_possible = tokens.len() * 2; // full match + prefix match
+    let ratio = hits as f32 / max_possible as f32;
+    ratio.clamp(0.0, 1.0)
+}
+
 /// Score based on whether the file is source code, config, docs, etc.
 fn compute_file_type_score(path: &Path) -> f32 {
     let ft = grepit_searcher::classify_file_type(path);
@@ -137,15 +220,33 @@ fn compute_line_position(raw: &RawMatch) -> f32 {
     }
 }
 
-/// Heuristic check if a line looks like a definition (without tree-sitter).
+/// Heuristic check if a line looks like a definition.
+///
+/// Improved: checks that definition keywords appear at the START of the
+/// trimmed line (position-aware), not just anywhere. This avoids false
+/// positives from comments like `// this function does X` or strings
+/// containing definition keywords.
 fn compute_definition_signal(raw: &RawMatch) -> f32 {
     let line = raw.line_content.trim();
 
-    // Common definition patterns across languages
+    // Skip lines that look like comments
+    if line.starts_with("//")
+        || line.starts_with('#')
+        || line.starts_with("/*")
+        || line.starts_with('*')
+        || line.starts_with("<!--")
+    {
+        return 0.1;
+    }
+
+    // Common definition patterns — must appear at the START of the trimmed line
     let def_patterns = [
         // Rust
         "fn ",
         "pub fn ",
+        "pub(crate) fn ",
+        "async fn ",
+        "pub async fn ",
         "struct ",
         "pub struct ",
         "enum ",
@@ -153,6 +254,7 @@ fn compute_definition_signal(raw: &RawMatch) -> f32 {
         "trait ",
         "pub trait ",
         "impl ",
+        "impl<",
         "type ",
         "pub type ",
         "const ",
@@ -167,25 +269,27 @@ fn compute_definition_signal(raw: &RawMatch) -> f32 {
         "async def ",
         // JavaScript/TypeScript
         "function ",
-        "const ",
-        "let ",
-        "var ",
-        "export ",
-        "interface ",
-        "export default ",
+        "async function ",
         "export function ",
+        "export async function ",
+        "export default function ",
         "export class ",
         "export const ",
         "export interface ",
+        "export type ",
+        "export enum ",
+        "interface ",
         // Go
         "func ",
-        "type ",
-        // Java/C++
+        "func (",
+        // Java/C#/C++
         "public class ",
         "private class ",
         "protected class ",
         "public static ",
         "public interface ",
+        "public enum ",
+        "abstract class ",
         // Ruby
         "module ",
     ];
@@ -196,12 +300,25 @@ fn compute_definition_signal(raw: &RawMatch) -> f32 {
         }
     }
 
-    // Partial indicators
-    if line.contains("= function") || line.contains("=> {") || line.contains("=> (") {
-        return 0.7;
+    // JS/TS variable declarations that are definitions (const/let/var at start of line)
+    // Only count if they also have an assignment
+    if (line.starts_with("const ") || line.starts_with("let ") || line.starts_with("var "))
+        && line.contains('=')
+    {
+        return 0.8;
     }
 
-    0.2
+    // Export default with assignment
+    if line.starts_with("export default ") {
+        return 0.8;
+    }
+
+    // Arrow functions / function expressions assigned to variables
+    if line.contains("= function") || line.contains("=> {") || line.contains("=> (") {
+        return 0.6;
+    }
+
+    0.15
 }
 
 #[cfg(test)]
@@ -247,5 +364,33 @@ mod tests {
         };
         let signal = compute_definition_signal(&raw);
         assert!(signal < 0.5);
+    }
+
+    #[test]
+    fn test_comment_not_definition() {
+        let raw = RawMatch {
+            path: PathBuf::from("src/lib.rs"),
+            line_number: 1,
+            column: 1,
+            line_content: "// fn this_is_a_comment".to_string(),
+            match_text: "fn".to_string(),
+            file_line_count: 100,
+        };
+        let signal = compute_definition_signal(&raw);
+        assert!(signal < 0.2);
+    }
+
+    #[test]
+    fn test_query_path_boost() {
+        let score =
+            compute_query_path_boost(&PathBuf::from("src/auth/handler.rs"), "authenticate");
+        assert!(score > 0.3);
+    }
+
+    #[test]
+    fn test_query_path_no_match() {
+        let score =
+            compute_query_path_boost(&PathBuf::from("src/database/pool.rs"), "authenticate");
+        assert!(score < 0.1);
     }
 }

@@ -116,6 +116,10 @@ pub struct Args {
     #[arg(long = "max-results", default_value = "100")]
     pub max_results: usize,
 
+    /// Show signal breakdown explaining why each result ranked where it did.
+    #[arg(long)]
+    pub explain: bool,
+
     // ── Meta ────────────────────────────────────────────────────────
     /// Number of search threads (default: auto-detect).
     #[arg(short = 'j', long = "threads")]

@@ -4,6 +4,7 @@ use crate::OutputConfig;
 use grepit_context::ContextualMatch;
 use grepit_tokens::BudgetEnforcer;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::io::Write;
 
 /// The top-level JSON response.
@@ -25,6 +26,8 @@ pub struct SearchResult {
     pub score: f32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub explain: Option<Vec<String>>,
 }
 
 /// Context lines surrounding a match.
@@ -34,6 +37,13 @@ pub struct ContextBlock {
     #[serde(rename = "match_line")]
     pub matched_line: String,
     pub after: Vec<String>,
+}
+
+/// A file with its match count, for the top_files stat.
+#[derive(Debug, Serialize)]
+pub struct TopFile {
+    pub path: String,
+    pub match_count: u64,
 }
 
 /// Statistics about the search.
@@ -49,10 +59,12 @@ pub struct SearchStats {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token_budget: Option<u64>,
     pub truncated: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub top_files: Option<Vec<TopFile>>,
 }
 
 /// Convert contextual matches to JSON search results.
-fn to_search_results(matches: &[ContextualMatch]) -> Vec<SearchResult> {
+fn to_search_results(matches: &[ContextualMatch], explain: bool) -> Vec<SearchResult> {
     matches
         .iter()
         .map(|m| {
@@ -73,12 +85,40 @@ fn to_search_results(matches: &[ContextualMatch]) -> Vec<SearchResult> {
                 } else {
                     None
                 },
+                explain: if explain {
+                    Some(m.scored.signals.explain())
+                } else {
+                    None
+                },
             }
         })
         .collect()
 }
 
-/// Write JSON output, optionally with token budget enforcement.
+/// Compute top files by match count from the full match set.
+fn compute_top_files(matches: &[ContextualMatch], limit: usize) -> Vec<TopFile> {
+    let mut counts: HashMap<String, u64> = HashMap::new();
+    for m in matches {
+        let path = m.scored.raw.path.to_string_lossy().to_string();
+        *counts.entry(path).or_insert(0) += 1;
+    }
+
+    let mut files: Vec<TopFile> = counts
+        .into_iter()
+        .map(|(path, match_count)| TopFile { path, match_count })
+        .collect();
+
+    files.sort_by(|a, b| b.match_count.cmp(&a.match_count));
+    files.truncate(limit);
+    files
+}
+
+/// Write JSON output, with greedy token budget packing.
+///
+/// Instead of truncating at the first result that doesn't fit,
+/// greedy packing tries ALL remaining results to maximize information
+/// density within the budget. A dense file with 50 short matches
+/// shouldn't evict a critical definition just because it came later.
 pub fn write_json<W: Write>(
     writer: &mut W,
     matches: Vec<ContextualMatch>,
@@ -88,22 +128,31 @@ pub fn write_json<W: Write>(
     duration_ms: u64,
     config: &OutputConfig,
 ) -> anyhow::Result<()> {
-    let mut results = to_search_results(&matches);
+    // Compute top files before any filtering
+    let top_files = if config.show_stats {
+        Some(compute_top_files(&matches, 10))
+    } else {
+        None
+    };
+
+    let mut results = to_search_results(&matches, config.explain);
     let mut truncated = false;
     let mut tokens_used: Option<u64> = None;
 
-    // Apply token budget if configured
+    // Apply token budget with greedy packing
     if let Some(budget) = config.token_budget {
         let mut enforcer = BudgetEnforcer::new(budget);
         let mut kept = Vec::new();
 
+        // Greedy packing: try every result, skip ones that don't fit,
+        // keep going to find smaller results that do fit
         for result in results {
             let serialized = serde_json::to_string(&result)?;
             if enforcer.try_add(&serialized) {
                 kept.push(result);
             } else {
                 truncated = true;
-                break;
+                // Don't break — keep trying remaining results (greedy packing)
             }
         }
 
@@ -122,6 +171,7 @@ pub fn write_json<W: Write>(
                 tokens_used,
                 token_budget: config.token_budget,
                 truncated,
+                top_files,
             })
         } else {
             None

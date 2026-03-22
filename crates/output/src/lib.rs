@@ -8,7 +8,7 @@ mod human;
 mod json;
 mod jsonl;
 
-pub use json::{ContextBlock, SearchResponse, SearchResult, SearchStats};
+pub use json::{ContextBlock, SearchResponse, SearchResult, SearchStats, TopFile};
 
 use grepit_context::ContextualMatch;
 
@@ -44,6 +44,8 @@ pub struct OutputConfig {
     pub pretty: bool,
     pub show_stats: bool,
     pub token_budget: Option<u64>,
+    /// Include signal breakdown explaining why each result ranked where it did.
+    pub explain: bool,
 }
 
 impl Default for OutputConfig {
@@ -53,6 +55,7 @@ impl Default for OutputConfig {
             pretty: false,
             show_stats: true,
             token_budget: None,
+            explain: false,
         }
     }
 }

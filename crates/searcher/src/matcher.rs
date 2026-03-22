@@ -1,4 +1,8 @@
 //! Regex matching with position tracking.
+//!
+//! Uses byte-oriented line scanning to avoid collecting all lines into a Vec.
+//! We count newlines with memchr for the total line count, then iterate lines
+//! with a streaming scan — no intermediate allocation for non-matching lines.
 
 use std::path::{Path, PathBuf};
 
@@ -15,31 +19,35 @@ pub struct RawMatch {
     pub line_content: String,
     /// The actual matched text (the substring that matched the pattern).
     pub match_text: String,
-    /// All lines from the file (for context extraction later).
-    /// This is stored as an index into a shared line cache, not the lines themselves.
+    /// Total number of lines in the file (for context extraction).
     pub file_line_count: u64,
 }
 
 /// Search a file's content (as bytes) for matches against a compiled regex.
 /// Returns all matches found.
+///
+/// Uses streaming line iteration — never collects all lines into a Vec.
+/// Only allocates strings for lines that actually match.
 pub fn find_matches(
     path: &Path,
     content: &[u8],
     regex: &regex::Regex,
     max_count: Option<usize>,
 ) -> Vec<RawMatch> {
-    let mut matches = Vec::new();
-
-    // Convert to string, skipping files that aren't valid UTF-8
+    // Validate UTF-8 once upfront (zero-copy check)
     let text = match std::str::from_utf8(content) {
         Ok(t) => t,
-        Err(_) => return matches,
+        Err(_) => return Vec::new(),
     };
 
-    let lines: Vec<&str> = text.lines().collect();
-    let file_line_count = lines.len() as u64;
+    // Count total lines via fast newline counting (memchr-optimized)
+    let file_line_count = memchr::memchr_iter(b'\n', content).count() as u64 + 1;
 
-    for (line_idx, line) in lines.iter().enumerate() {
+    let mut matches = Vec::new();
+    let path_buf = path.to_path_buf();
+
+    // Stream through lines — no collect(), no Vec<&str> allocation
+    for (line_idx, line) in text.lines().enumerate() {
         if let Some(max) = max_count {
             if matches.len() >= max {
                 break;
@@ -48,7 +56,7 @@ pub fn find_matches(
 
         if let Some(m) = regex.find(line) {
             matches.push(RawMatch {
-                path: path.to_path_buf(),
+                path: path_buf.clone(),
                 line_number: (line_idx + 1) as u64,
                 column: (m.start() + 1) as u64,
                 line_content: line.to_string(),

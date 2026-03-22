@@ -18,6 +18,8 @@ pub struct RankConfig {
     pub enabled: bool,
     /// Maximum number of results to return.
     pub max_results: Option<usize>,
+    /// The search query (used for query-aware path boosting).
+    pub query: String,
 }
 
 impl Default for RankConfig {
@@ -25,6 +27,7 @@ impl Default for RankConfig {
         Self {
             enabled: true,
             max_results: Some(100),
+            query: String::new(),
         }
     }
 }
@@ -35,7 +38,7 @@ pub fn rank_matches(matches: Vec<RawMatch>, config: &RankConfig) -> Vec<ScoredMa
     let mut scored: Vec<ScoredMatch> = matches
         .into_iter()
         .map(|raw| {
-            let signals = SignalSet::compute(&raw);
+            let signals = SignalSet::compute(&raw, &config.query);
             let score = signals.score();
             ScoredMatch {
                 raw,
@@ -85,7 +88,10 @@ mod tests {
             make_match("src/config.rs", "pub struct Config {", 5),
         ];
 
-        let config = RankConfig::default();
+        let config = RankConfig {
+            query: "Config".to_string(),
+            ..Default::default()
+        };
         let ranked = rank_matches(matches, &config);
 
         // The struct definition should rank higher than the usage
@@ -93,14 +99,32 @@ mod tests {
     }
 
     #[test]
+    fn test_query_path_boost() {
+        let matches = vec![
+            make_match("src/utils.rs", "pub struct Config {", 5),
+            make_match("src/config.rs", "pub struct Config {", 5),
+        ];
+
+        let config = RankConfig {
+            query: "Config".to_string(),
+            ..Default::default()
+        };
+        let ranked = rank_matches(matches, &config);
+
+        // config.rs should rank higher due to query-path boost
+        assert_eq!(ranked[0].raw.path.to_str().unwrap(), "src/config.rs");
+    }
+
+    #[test]
     fn test_max_results() {
         let matches: Vec<RawMatch> = (0..200)
-            .map(|i| make_match("src/lib.rs", &format!("line {}", i), i + 1))
+            .map(|i| make_match("src/lib.rs", &format!("line {i}"), i + 1))
             .collect();
 
         let config = RankConfig {
             enabled: false,
             max_results: Some(50),
+            query: String::new(),
         };
         let ranked = rank_matches(matches, &config);
         assert_eq!(ranked.len(), 50);

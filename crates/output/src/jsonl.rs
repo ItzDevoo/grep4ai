@@ -36,6 +36,11 @@ pub fn write_jsonl<W: Write>(
             } else {
                 None
             },
+            explain: if config.explain {
+                Some(m.scored.signals.explain())
+            } else {
+                None
+            },
         };
 
         let line = serde_json::to_string(&result)?;

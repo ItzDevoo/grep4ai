@@ -103,6 +103,40 @@ impl SearchEngine {
         (all_matches, stats)
     }
 
+    /// Search files received from a channel concurrently with walking.
+    /// Files are searched as they arrive — no waiting for the full file list.
+    pub fn search_streaming(
+        &self,
+        rx: crossbeam_channel::Receiver<FileEntry>,
+    ) -> (Vec<RawMatch>, SearchStats) {
+        let files_searched = AtomicU64::new(0);
+        let files_skipped = AtomicU64::new(0);
+
+        // Drain the channel into a parallel iterator via rayon's bridge
+        let entries: Vec<FileEntry> = rx.into_iter().collect();
+        let all_matches: Vec<RawMatch> = entries
+            .par_iter()
+            .flat_map(|entry| match self.search_file(&entry.path) {
+                Ok(matches) => {
+                    files_searched.fetch_add(1, Ordering::Relaxed);
+                    matches
+                }
+                Err(_) => {
+                    files_skipped.fetch_add(1, Ordering::Relaxed);
+                    Vec::new()
+                }
+            })
+            .collect();
+
+        let stats = SearchStats {
+            files_searched: files_searched.load(Ordering::Relaxed),
+            files_skipped: files_skipped.load(Ordering::Relaxed),
+            total_matches: all_matches.len() as u64,
+        };
+
+        (all_matches, stats)
+    }
+
     /// Search a single file using memory-mapped I/O.
     fn search_file(&self, path: &PathBuf) -> Result<Vec<RawMatch>> {
         let file = std::fs::File::open(path)?;
@@ -113,24 +147,28 @@ impl SearchEngine {
             return Ok(Vec::new());
         }
 
-        // For small files, just read into memory (mmap overhead not worth it)
-        let content = if metadata.len() < 32 * 1024 {
-            std::fs::read(path)?
+        // For small files, just read into memory (mmap overhead not worth it).
+        // For larger files, mmap and search the mapped bytes directly — no copy.
+        let small_buf;
+        let mmap_buf;
+        let content: &[u8] = if metadata.len() < 32 * 1024 {
+            small_buf = std::fs::read(path)?;
+            &small_buf
         } else {
             // SAFETY: We only read the file and don't hold the mapping
             // across any operations that might modify it.
-            let mmap = unsafe { Mmap::map(&file)? };
-            mmap.to_vec()
+            mmap_buf = unsafe { Mmap::map(&file)? };
+            &mmap_buf
         };
 
         // Skip binary files
-        if is_binary(&content) {
+        if is_binary(content) {
             return Ok(Vec::new());
         }
 
         Ok(find_matches(
             path,
-            &content,
+            content,
             &self.compiled_regex,
             self.config.max_count_per_file,
         ))

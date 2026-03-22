@@ -65,60 +65,13 @@ impl Walker {
     /// This is the simple synchronous API.
     pub fn collect_files(&self) -> Vec<FileEntry> {
         let mut entries = Vec::new();
-        let builder = self.build_walker();
-
-        let walker = builder.build_parallel();
-        let (tx, rx): (Sender<FileEntry>, Receiver<FileEntry>) = bounded(4096);
+        let (tx, rx) = self.walk_channel();
 
         // Spawn the walker in a scoped thread
         std::thread::scope(|s| {
-            s.spawn(|| {
-                walker.run(|| {
-                    let tx = tx.clone();
-                    let max_filesize = self.config.max_filesize;
-                    let include_types = self.config.include_types.clone();
-                    let exclude_types = self.config.exclude_types.clone();
-
-                    Box::new(move |entry| {
-                        let entry = match entry {
-                            Ok(e) => e,
-                            Err(_) => return ignore::WalkState::Continue,
-                        };
-
-                        // Skip directories
-                        let ft = entry.file_type();
-                        if ft.is_none_or(|t| !t.is_file()) {
-                            return ignore::WalkState::Continue;
-                        }
-
-                        let path = entry.path().to_path_buf();
-
-                        // Check file size limit
-                        if let Some(max_size) = max_filesize {
-                            if let Ok(meta) = entry.metadata() {
-                                if meta.len() > max_size {
-                                    return ignore::WalkState::Continue;
-                                }
-                            }
-                        }
-
-                        let file_type = classify_file_type(&path);
-
-                        // Apply type filters
-                        if !include_types.is_empty()
-                            && !include_types.iter().any(|t| t == file_type.name())
-                        {
-                            return ignore::WalkState::Continue;
-                        }
-                        if exclude_types.iter().any(|t| t == file_type.name()) {
-                            return ignore::WalkState::Continue;
-                        }
-
-                        let _ = tx.send(FileEntry { path, file_type });
-                        ignore::WalkState::Continue
-                    })
-                });
-                drop(tx);
+            s.spawn(move || {
+                // tx is moved in and dropped when walk_into completes
+                Self::walk_into(&self.config, &self.build_walker(), tx);
             });
 
             for entry in rx {
@@ -127,6 +80,71 @@ impl Walker {
         });
 
         entries
+    }
+
+    /// Create a channel pair for streaming file discovery.
+    /// Returns (sender, receiver) — the walker sends files into the sender,
+    /// and the caller can consume from the receiver concurrently.
+    pub fn walk_channel(&self) -> (Sender<FileEntry>, Receiver<FileEntry>) {
+        bounded(4096)
+    }
+
+    /// Start walking and send discovered files into the provided sender.
+    /// This is meant to be called from a background thread so the caller
+    /// can consume files from the receiver while walking continues.
+    pub fn start_walk(&self, tx: Sender<FileEntry>) {
+        Self::walk_into(&self.config, &self.build_walker(), tx);
+    }
+
+    /// Internal: run the parallel walker, sending entries into `tx`.
+    fn walk_into(config: &WalkerConfig, builder: &WalkBuilder, tx: Sender<FileEntry>) {
+        let walker = builder.build_parallel();
+        walker.run(|| {
+            let tx = tx.clone();
+            let max_filesize = config.max_filesize;
+            let include_types = config.include_types.clone();
+            let exclude_types = config.exclude_types.clone();
+
+            Box::new(move |entry| {
+                let entry = match entry {
+                    Ok(e) => e,
+                    Err(_) => return ignore::WalkState::Continue,
+                };
+
+                // Skip directories
+                let ft = entry.file_type();
+                if ft.is_none_or(|t| !t.is_file()) {
+                    return ignore::WalkState::Continue;
+                }
+
+                let path = entry.path().to_path_buf();
+
+                // Check file size limit
+                if let Some(max_size) = max_filesize {
+                    if let Ok(meta) = entry.metadata() {
+                        if meta.len() > max_size {
+                            return ignore::WalkState::Continue;
+                        }
+                    }
+                }
+
+                let file_type = classify_file_type(&path);
+
+                // Apply type filters
+                if !include_types.is_empty()
+                    && !include_types.iter().any(|t| t == file_type.name())
+                {
+                    return ignore::WalkState::Continue;
+                }
+                if exclude_types.iter().any(|t| t == file_type.name()) {
+                    return ignore::WalkState::Continue;
+                }
+
+                let _ = tx.send(FileEntry { path, file_type });
+                ignore::WalkState::Continue
+            })
+        });
+        // tx is dropped here, closing the channel
     }
 
     /// Build the underlying ignore walker with our configuration.

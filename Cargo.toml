@@ -11,7 +11,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/ItzDevoo/grepit"
@@ -25,6 +25,7 @@ anyhow = "1"
 thiserror = "2"
 rayon = "1"
 crossbeam-channel = "0.5"
+memchr = "2"
 memmap2 = "0.9"
 ignore = "0.4"
 clap = { version = "4", features = ["derive", "env"] }

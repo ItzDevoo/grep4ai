@@ -17,7 +17,7 @@ use crate::cli::{parse_filesize, Args};
 pub fn run(args: Args) -> Result<()> {
     let start = Instant::now();
 
-    // ── 1. Configure and run the walker ─────────────────────────────
+    // ── 1. Configure walker and search engine ────────────────────────
     let walker_config = WalkerConfig {
         paths: args.paths.iter().map(PathBuf::from).collect(),
         threads: args.threads.unwrap_or(0),
@@ -30,14 +30,6 @@ pub fn run(args: Args) -> Result<()> {
         exclude_types: args.type_not.clone(),
     };
 
-    let walker = Walker::new(walker_config);
-    let files = walker.collect_files();
-
-    if args.debug {
-        eprintln!("[grep4ai] discovered {} files", files.len());
-    }
-
-    // ── 2. Configure and run the search engine ──────────────────────
     let search_config = SearchConfig {
         pattern: args.pattern.clone(),
         ignore_case: args.ignore_case,
@@ -47,7 +39,21 @@ pub fn run(args: Args) -> Result<()> {
     };
 
     let engine = SearchEngine::new(search_config)?;
-    let (raw_matches, search_stats) = engine.search(&files);
+    let walker = Walker::new(walker_config);
+
+    // ── 2. Pipeline: walk and search concurrently ────────────────────
+    // The walker sends files into a channel while the searcher
+    // consumes them in parallel — no waiting for the full file list.
+    let (tx, rx) = walker.walk_channel();
+    let (raw_matches, search_stats) = std::thread::scope(|s| {
+        // Spawn walker in background — it feeds files into the channel
+        s.spawn(move || {
+            walker.start_walk(tx);
+        });
+
+        // Search files as they arrive from the walker
+        engine.search_streaming(rx)
+    });
 
     if args.debug {
         eprintln!(
@@ -68,6 +74,7 @@ pub fn run(args: Args) -> Result<()> {
     let rank_config = RankConfig {
         enabled: should_rank,
         max_results: Some(args.max_results),
+        query: args.pattern.clone(),
     };
 
     let scored_matches = rank_matches(raw_matches, &rank_config);
@@ -115,6 +122,7 @@ pub fn run(args: Args) -> Result<()> {
         pretty: args.pretty,
         show_stats: !args.no_stats,
         token_budget: args.token_budget,
+        explain: args.explain,
     };
 
     let mut stdout = std::io::stdout().lock();
