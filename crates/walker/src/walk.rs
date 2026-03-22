@@ -131,8 +131,7 @@ impl Walker {
                 let file_type = classify_file_type(&path);
 
                 // Apply type filters
-                if !include_types.is_empty()
-                    && !include_types.iter().any(|t| t == file_type.name())
+                if !include_types.is_empty() && !include_types.iter().any(|t| t == file_type.name())
                 {
                     return ignore::WalkState::Continue;
                 }

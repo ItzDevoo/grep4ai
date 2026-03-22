@@ -382,8 +382,7 @@ mod tests {
 
     #[test]
     fn test_query_path_boost() {
-        let score =
-            compute_query_path_boost(&PathBuf::from("src/auth/handler.rs"), "authenticate");
+        let score = compute_query_path_boost(&PathBuf::from("src/auth/handler.rs"), "authenticate");
         assert!(score > 0.3);
     }
 
