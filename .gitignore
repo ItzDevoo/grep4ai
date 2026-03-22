@@ -15,3 +15,9 @@ node_modules/
 /package-lock.json
 /package.json
 mcp/node_modules/
+
+# Secrets and environment files
+.env
+.env.*
+*.token
+.secrets
