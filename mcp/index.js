@@ -78,6 +78,35 @@ function findBinary() {
 
 const GREP4AI_BIN = findBinary();
 
+// ── Validate binary at startup ────────────────────────────────────
+
+function validateBinary() {
+  const { execSync } = require("child_process");
+  try {
+    const versionOutput = execSync(`"${GREP4AI_BIN}" --version`, {
+      encoding: "utf8",
+      timeout: 5000,
+    }).trim();
+    // Extract version string (e.g., "grep4ai 0.4.0" -> "0.4.0")
+    const match = versionOutput.match(/(\d+\.\d+\.\d+)/);
+    if (match) {
+      return match[1];
+    }
+    return versionOutput;
+  } catch (error) {
+    console.error(
+      `grep4ai-mcp: FATAL — grep4ai binary not found or not executable.\n` +
+      `  Looked for: ${GREP4AI_BIN}\n` +
+      `  Install with: npm install -g grep4ai\n` +
+      `  Or build from source: cargo install --path crates/core\n` +
+      `  Error: ${error.message}`
+    );
+    process.exit(1);
+  }
+}
+
+const GREP4AI_VERSION = validateBinary();
+
 // ── Execute grep4ai ────────────────────────────────────────────────
 
 function runGrep4ai(args) {
@@ -91,8 +120,16 @@ function runGrep4ai(args) {
         env: process.env,
       },
       (error, stdout, stderr) => {
-        if (error && !stdout) {
-          reject(new Error(`grep4ai failed: ${stderr || error.message}`));
+        if (error) {
+          // Exit code 1 = no matches (grep convention) — still valid output
+          if (error.code === 1 && stdout) {
+            resolve(stdout);
+          } else if (stdout) {
+            // Other errors but we got output — return it
+            resolve(stdout);
+          } else {
+            reject(new Error(`grep4ai failed: ${stderr || error.message}`));
+          }
         } else {
           resolve(stdout);
         }
@@ -105,7 +142,7 @@ function runGrep4ai(args) {
 
 const server = new McpServer({
   name: "grep4ai",
-  version: "0.3.1",
+  version: GREP4AI_VERSION,
 });
 
 // Main search tool
@@ -197,8 +234,10 @@ server.tool(
     token_budget: z.number().optional().describe("Maximum tokens in output"),
   },
   async ({ name, paths, file_type, token_budget }) => {
+    // Escape special regex characters in the name to prevent regex injection
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // Build a pattern that matches common definition forms
-    const pattern = `(fn |def |function |class |struct |enum |trait |interface |type |const |export ).*${name}`;
+    const pattern = `(fn |def |function |class |struct |enum |trait |interface |type |const |export ).*${escapedName}`;
 
     const args = ["-f", "json", "--explain"];
 

@@ -14,7 +14,8 @@ use grep4ai_walker::{Walker, WalkerConfig};
 use crate::cli::{parse_filesize, Args};
 
 /// Run the full search pipeline with the given CLI arguments.
-pub fn run(args: Args) -> Result<()> {
+/// Returns the number of matches found (for exit code purposes).
+pub fn run(args: Args) -> Result<u64> {
     let start = Instant::now();
 
     // ── 1. Configure walker and search engine ────────────────────────
@@ -136,5 +137,5 @@ pub fn run(args: Args) -> Result<()> {
         &output_config,
     )?;
 
-    Ok(())
+    Ok(search_stats.total_matches)
 }

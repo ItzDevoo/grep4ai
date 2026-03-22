@@ -13,8 +13,16 @@ use clap::Parser;
 fn main() {
     let args = cli::Args::parse();
 
-    if let Err(e) = app::run(args) {
-        eprintln!("grep4ai: {e}");
-        std::process::exit(1);
+    match app::run(args) {
+        Ok(match_count) => {
+            // Follow grep convention: exit code 1 when no matches found
+            if match_count == 0 {
+                std::process::exit(1);
+            }
+        }
+        Err(e) => {
+            eprintln!("grep4ai: {e}");
+            std::process::exit(2);
+        }
     }
 }
