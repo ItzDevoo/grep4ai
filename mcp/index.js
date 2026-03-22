@@ -109,18 +109,28 @@ const GREP4AI_VERSION = validateBinary();
 
 // ── Execute grep4ai ────────────────────────────────────────────────
 
+const TIMEOUT_MS = 10000; // 10 seconds
+
 function runGrep4ai(args) {
   return new Promise((resolve, reject) => {
-    execFile(
+    const child = execFile(
       GREP4AI_BIN,
       args,
       {
         maxBuffer: 50 * 1024 * 1024, // 50MB
-        timeout: 30000, // 30s
+        timeout: TIMEOUT_MS,
         env: process.env,
       },
       (error, stdout, stderr) => {
         if (error) {
+          // Timeout detection
+          if (error.killed || error.signal === "SIGTERM") {
+            reject(new Error(JSON.stringify({
+              error: "timeout",
+              suggestion: "try a more specific pattern or path"
+            })));
+            return;
+          }
           // Exit code 1 = no matches (grep convention) — still valid output
           if (error.code === 1 && stdout) {
             resolve(stdout);
@@ -136,6 +146,24 @@ function runGrep4ai(args) {
       }
     );
   });
+}
+
+// ── Input validation ──────────────────────────────────────────────
+
+function validateSearchInput(pattern, paths) {
+  if (!pattern || pattern.trim().length === 0) {
+    throw new Error("pattern must not be empty");
+  }
+  if (pattern.length > 500) {
+    throw new Error("pattern must be 500 characters or fewer");
+  }
+  if (paths) {
+    for (const p of paths) {
+      if (p.includes("../") || p.includes("..\\")) {
+        throw new Error(`path traversal not allowed: ${p}`);
+      }
+    }
+  }
 }
 
 // ── MCP Server ─────────────────────────────────────────────────────
@@ -171,6 +199,15 @@ server.tool(
   async ({ pattern, paths, ignore_case, word, fixed_string, file_type, glob,
            context, token_budget, max_results, dedup, no_rank, explain,
            hidden, no_ignore, max_depth, max_filesize }) => {
+    try {
+      validateSearchInput(pattern, paths);
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `Validation error: ${error.message}` }],
+        isError: true,
+      };
+    }
+
     const args = [];
 
     // Flags
@@ -234,6 +271,15 @@ server.tool(
     token_budget: z.number().optional().describe("Maximum tokens in output"),
   },
   async ({ name, paths, file_type, token_budget }) => {
+    try {
+      validateSearchInput(name, paths);
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `Validation error: ${error.message}` }],
+        isError: true,
+      };
+    }
+
     // Escape special regex characters in the name to prevent regex injection
     const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // Build a pattern that matches common definition forms
@@ -260,6 +306,46 @@ server.tool(
     } catch (error) {
       return {
         content: [{ type: "text", text: `Error: ${error.message}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Health check tool
+server.tool(
+  "ping",
+  "Health check — verifies the grep4ai binary is reachable and returns its version.",
+  {},
+  async () => {
+    try {
+      const { execSync } = require("child_process");
+      const versionOutput = execSync(`"${GREP4AI_BIN}" --version`, {
+        encoding: "utf8",
+        timeout: 5000,
+      }).trim();
+
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            status: "ok",
+            binary: GREP4AI_BIN,
+            version: GREP4AI_VERSION,
+            raw_version: versionOutput,
+          }, null, 2),
+        }],
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            status: "error",
+            binary: GREP4AI_BIN,
+            error: error.message,
+          }, null, 2),
+        }],
         isError: true,
       };
     }
