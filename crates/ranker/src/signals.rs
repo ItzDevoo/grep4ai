@@ -229,14 +229,24 @@ fn compute_line_position(raw: &RawMatch) -> f32 {
 fn compute_definition_signal(raw: &RawMatch) -> f32 {
     let line = raw.line_content.trim();
 
-    // Skip lines that look like comments
+    // Skip lines that look like comments (but not Python decorators)
     if line.starts_with("//")
-        || line.starts_with('#')
+        || (line.starts_with('#') && !line.starts_with("#["))
         || line.starts_with("/*")
         || line.starts_with('*')
         || line.starts_with("<!--")
     {
         return 0.1;
+    }
+
+    // Python decorators that signal a definition follows
+    if line.starts_with("@dataclass")
+        || line.starts_with("@staticmethod")
+        || line.starts_with("@classmethod")
+        || line.starts_with("@property")
+        || line.starts_with("@abstractmethod")
+    {
+        return 0.9;
     }
 
     // Common definition patterns — must appear at the START of the trimmed line
@@ -278,6 +288,9 @@ fn compute_definition_signal(raw: &RawMatch) -> f32 {
         "export interface ",
         "export type ",
         "export enum ",
+        "export let ",
+        "export var ",
+        "export default class ",
         "interface ",
         // Go
         "func ",
@@ -314,8 +327,18 @@ fn compute_definition_signal(raw: &RawMatch) -> f32 {
     }
 
     // Arrow functions / function expressions assigned to variables
-    if line.contains("= function") || line.contains("=> {") || line.contains("=> (") {
+    if line.contains("= function")
+        || line.contains("=> {")
+        || line.contains("=> (")
+        || line.contains("= () =>")
+        || line.contains("= async (")
+    {
         return 0.6;
+    }
+
+    // Rust attribute macros that define items (#[derive], #[test], etc.)
+    if line.starts_with("#[") {
+        return 0.5;
     }
 
     0.15
@@ -391,5 +414,76 @@ mod tests {
         let score =
             compute_query_path_boost(&PathBuf::from("src/database/pool.rs"), "authenticate");
         assert!(score < 0.1);
+    }
+
+    fn make_raw(line: &str) -> RawMatch {
+        RawMatch {
+            path: PathBuf::from("src/lib.rs"),
+            line_number: 1,
+            column: 1,
+            line_content: line.to_string(),
+            match_text: "test".to_string(),
+            file_line_count: 100,
+        }
+    }
+
+    #[test]
+    fn test_ts_arrow_export() {
+        let raw = make_raw("export const handler = () => {");
+        assert!(compute_definition_signal(&raw) >= 0.6);
+    }
+
+    #[test]
+    fn test_ts_interface() {
+        let raw = make_raw("interface UserConfig {");
+        assert_eq!(compute_definition_signal(&raw), 1.0);
+    }
+
+    #[test]
+    fn test_ts_type_alias() {
+        let raw = make_raw("type Result<T> = { ok: T } | { err: Error }");
+        assert_eq!(compute_definition_signal(&raw), 1.0);
+    }
+
+    #[test]
+    fn test_python_dataclass() {
+        let raw = make_raw("@dataclass");
+        assert!(compute_definition_signal(&raw) >= 0.9);
+    }
+
+    #[test]
+    fn test_python_async_def() {
+        let raw = make_raw("async def fetch_data(url: str) -> dict:");
+        assert_eq!(compute_definition_signal(&raw), 1.0);
+    }
+
+    #[test]
+    fn test_rust_impl_block() {
+        let raw = make_raw("impl Display for Config {");
+        assert_eq!(compute_definition_signal(&raw), 1.0);
+    }
+
+    #[test]
+    fn test_rust_impl_generic() {
+        let raw = make_raw("impl<T: Clone> Widget<T> {");
+        assert_eq!(compute_definition_signal(&raw), 1.0);
+    }
+
+    #[test]
+    fn test_go_method() {
+        let raw = make_raw("func (s *Server) HandleRequest(w http.ResponseWriter) {");
+        assert_eq!(compute_definition_signal(&raw), 1.0);
+    }
+
+    #[test]
+    fn test_export_default_function() {
+        let raw = make_raw("export default function App() {");
+        assert_eq!(compute_definition_signal(&raw), 1.0);
+    }
+
+    #[test]
+    fn test_const_arrow_fn() {
+        let raw = make_raw("const processData = () => {");
+        assert!(compute_definition_signal(&raw) >= 0.6);
     }
 }
