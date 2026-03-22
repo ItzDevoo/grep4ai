@@ -4,3 +4,11 @@ Cargo.lock
 *.swp
 *.swo
 .DS_Store
+
+# npm platform binaries (built by CI, not committed)
+npm/grepit-win32-x64/bin/
+npm/grepit-linux-x64/bin/
+npm/grepit-linux-arm64/bin/
+npm/grepit-darwin-x64/bin/
+npm/grepit-darwin-arm64/bin/
+node_modules/

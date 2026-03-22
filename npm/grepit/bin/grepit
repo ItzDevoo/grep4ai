@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+
+// Launcher stub — this file exists so npm can set up the bin link.
+// After `postinstall`, this gets replaced with the actual native binary.
+// If for some reason the postinstall didn't run, this provides a helpful error.
+
+"use strict";
+
+const { execFileSync } = require("child_process");
+const path = require("path");
+const os = require("os");
+const fs = require("fs");
+
+const binaryName = os.platform() === "win32" ? "grepit.exe" : "grepit";
+const binaryPath = path.join(__dirname, binaryName);
+
+if (fs.existsSync(binaryPath)) {
+  // Native binary exists — exec it directly
+  const result = execFileSync(binaryPath, process.argv.slice(2), {
+    stdio: "inherit",
+    env: process.env,
+  });
+} else {
+  console.error(
+    "grepit: Native binary not found.\n" +
+    "The postinstall script may not have run. Try:\n" +
+    "  node node_modules/grepit/install.js\n" +
+    "Or install from source:\n" +
+    "  cargo install grepit"
+  );
+  process.exit(1);
+}
