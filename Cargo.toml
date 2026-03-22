@@ -31,12 +31,12 @@ ignore = "0.4"
 clap = { version = "4", features = ["derive", "env"] }
 
 # Workspace internal crates
-grepit-searcher = { path = "crates/searcher" }
-grepit-ranker = { path = "crates/ranker" }
-grepit-context = { path = "crates/context" }
-grepit-output = { path = "crates/output" }
-grepit-tokens = { path = "crates/tokens" }
-grepit-walker = { path = "crates/walker" }
+grep4ai-searcher = { path = "crates/searcher" }
+grep4ai-ranker = { path = "crates/ranker" }
+grep4ai-context = { path = "crates/context" }
+grep4ai-output = { path = "crates/output" }
+grep4ai-tokens = { path = "crates/tokens" }
+grep4ai-walker = { path = "crates/walker" }
 
 [profile.release]
 opt-level = 3

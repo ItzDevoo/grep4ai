@@ -10,7 +10,7 @@ mod jsonl;
 
 pub use json::{ContextBlock, SearchResponse, SearchResult, SearchStats, TopFile};
 
-use grepit_context::ContextualMatch;
+use grep4ai_context::ContextualMatch;
 
 use std::io::Write;
 

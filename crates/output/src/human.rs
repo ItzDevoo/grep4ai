@@ -3,7 +3,7 @@
 //! Looks similar to ripgrep's default output for debugging/manual use.
 
 use crate::OutputConfig;
-use grepit_context::ContextualMatch;
+use grep4ai_context::ContextualMatch;
 use std::io::Write;
 
 /// Write human-readable output with file headers and line numbers.

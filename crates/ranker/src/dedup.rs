@@ -83,7 +83,7 @@ fn normalize_line(line: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use grepit_searcher::RawMatch;
+    use grep4ai_searcher::RawMatch;
     use std::path::PathBuf;
 
     fn make_scored(path: &str, line: &str, score: f32) -> ScoredMatch {

@@ -4,8 +4,8 @@
 //! One match per line, no context, no formatting overhead.
 
 use crate::OutputConfig;
-use grepit_context::ContextualMatch;
-use grepit_tokens::BudgetEnforcer;
+use grep4ai_context::ContextualMatch;
+use grep4ai_tokens::BudgetEnforcer;
 use std::io::Write;
 
 /// Write compact output (path:line:match_text).

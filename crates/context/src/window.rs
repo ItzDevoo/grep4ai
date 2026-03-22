@@ -1,6 +1,6 @@
 //! Fixed and adaptive context extraction.
 
-use grepit_ranker::ScoredMatch;
+use grep4ai_ranker::ScoredMatch;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -115,8 +115,8 @@ pub fn extract_context(matches: Vec<ScoredMatch>, config: &ContextConfig) -> Vec
 #[cfg(test)]
 mod tests {
     use super::*;
-    use grepit_ranker::SignalSet;
-    use grepit_searcher::RawMatch;
+    use grep4ai_ranker::SignalSet;
+    use grep4ai_searcher::RawMatch;
     use std::path::PathBuf;
 
     #[test]

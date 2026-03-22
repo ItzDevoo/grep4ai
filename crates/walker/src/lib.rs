@@ -1,4 +1,4 @@
-//! Parallel, gitignore-aware directory traversal for grepit.
+//! Parallel, gitignore-aware directory traversal for grep4ai.
 //!
 //! Wraps the `ignore` crate (ripgrep's own walker) to provide
 //! a high-performance file discovery pipeline.

@@ -4,12 +4,12 @@ use anyhow::Result;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use grepit_context::{extract_context, merge_overlapping, ContextConfig};
-use grepit_output::{write_output, OutputConfig, OutputFormat};
-use grepit_ranker::dedup::DedupConfig;
-use grepit_ranker::{deduplicate, rank_matches, RankConfig};
-use grepit_searcher::{SearchConfig, SearchEngine};
-use grepit_walker::{Walker, WalkerConfig};
+use grep4ai_context::{extract_context, merge_overlapping, ContextConfig};
+use grep4ai_output::{write_output, OutputConfig, OutputFormat};
+use grep4ai_ranker::dedup::DedupConfig;
+use grep4ai_ranker::{deduplicate, rank_matches, RankConfig};
+use grep4ai_searcher::{SearchConfig, SearchEngine};
+use grep4ai_walker::{Walker, WalkerConfig};
 
 use crate::cli::{parse_filesize, Args};
 

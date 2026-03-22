@@ -1,10 +1,10 @@
 [package]
-name = "grepit-ranker"
+name = "grep4ai-ranker"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Relevance scoring and deduplication for grep4ai search results"
 
 [dependencies]
-grepit-searcher = { workspace = true }
+grep4ai-searcher = { workspace = true }
 anyhow = { workspace = true }

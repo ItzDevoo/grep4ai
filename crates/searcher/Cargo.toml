@@ -1,9 +1,9 @@
 [package]
-name = "grepit-searcher"
+name = "grep4ai-searcher"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Core search engine for grepit — parallel regex matching with memory-mapped I/O"
+description = "Core search engine for grep4ai — parallel regex matching with memory-mapped I/O"
 
 [dependencies]
 regex = { workspace = true }
@@ -13,4 +13,4 @@ rayon = { workspace = true }
 crossbeam-channel = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
-grepit-walker = { workspace = true }
+grep4ai-walker = { workspace = true }

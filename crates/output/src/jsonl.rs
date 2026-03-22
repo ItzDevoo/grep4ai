@@ -7,8 +7,8 @@ use std::io::Write;
 
 use crate::json::{ContextBlock, SearchResult};
 use crate::OutputConfig;
-use grepit_context::ContextualMatch;
-use grepit_tokens::BudgetEnforcer;
+use grep4ai_context::ContextualMatch;
+use grep4ai_tokens::BudgetEnforcer;
 
 /// Write JSONL output (one JSON object per line).
 pub fn write_jsonl<W: Write>(
@@ -19,7 +19,7 @@ pub fn write_jsonl<W: Write>(
     let mut enforcer = config.token_budget.map(BudgetEnforcer::new);
 
     for m in &matches {
-        let file_type = grepit_searcher::classify_file_type(&m.scored.raw.path);
+        let file_type = grep4ai_searcher::classify_file_type(&m.scored.raw.path);
         let result = SearchResult {
             path: m.scored.raw.path.to_string_lossy().to_string(),
             line: m.scored.raw.line_number,

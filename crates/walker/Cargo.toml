@@ -1,9 +1,9 @@
 [package]
-name = "grepit-walker"
+name = "grep4ai-walker"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Parallel, gitignore-aware directory traversal for grepit"
+description = "Parallel, gitignore-aware directory traversal for grep4ai"
 
 [dependencies]
 ignore = { workspace = true }

@@ -1,4 +1,4 @@
-//! Token counting and budget enforcement for grepit.
+//! Token counting and budget enforcement for grep4ai.
 //!
 //! Ensures search output fits within an AI agent's context window
 //! by counting tokens and truncating results when needed.

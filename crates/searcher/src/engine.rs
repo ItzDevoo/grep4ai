@@ -14,7 +14,7 @@ use rayon::prelude::*;
 
 use crate::binary::is_binary;
 use crate::matcher::{find_matches, RawMatch};
-use grepit_walker::FileEntry;
+use grep4ai_walker::FileEntry;
 
 /// Configuration for the search engine.
 #[derive(Debug, Clone)]

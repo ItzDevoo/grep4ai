@@ -1,8 +1,8 @@
 //! JSON output formatter — the primary output format for AI agents.
 
 use crate::OutputConfig;
-use grepit_context::ContextualMatch;
-use grepit_tokens::BudgetEnforcer;
+use grep4ai_context::ContextualMatch;
+use grep4ai_tokens::BudgetEnforcer;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::io::Write;
@@ -68,7 +68,7 @@ fn to_search_results(matches: &[ContextualMatch], explain: bool) -> Vec<SearchRe
     matches
         .iter()
         .map(|m| {
-            let file_type = grepit_searcher::classify_file_type(&m.scored.raw.path);
+            let file_type = grep4ai_searcher::classify_file_type(&m.scored.raw.path);
             SearchResult {
                 path: m.scored.raw.path.to_string_lossy().to_string(),
                 line: m.scored.raw.line_number,

@@ -1,6 +1,6 @@
 //! Individual scoring signals that contribute to match relevance.
 
-use grepit_searcher::RawMatch;
+use grep4ai_searcher::RawMatch;
 use std::path::Path;
 
 /// The set of scoring signals computed for a match.
@@ -190,15 +190,15 @@ fn compute_query_path_boost(path: &Path, query: &str) -> f32 {
 
 /// Score based on whether the file is source code, config, docs, etc.
 fn compute_file_type_score(path: &Path) -> f32 {
-    let ft = grepit_searcher::classify_file_type(path);
+    let ft = grep4ai_searcher::classify_file_type(path);
     if ft.is_source() {
         1.0
     } else {
         match ft {
-            grepit_searcher::FileType::Json
-            | grepit_searcher::FileType::Yaml
-            | grepit_searcher::FileType::Toml => 0.5,
-            grepit_searcher::FileType::Markdown => 0.3,
+            grep4ai_searcher::FileType::Json
+            | grep4ai_searcher::FileType::Yaml
+            | grep4ai_searcher::FileType::Toml => 0.5,
+            grep4ai_searcher::FileType::Markdown => 0.3,
             _ => 0.4,
         }
     }

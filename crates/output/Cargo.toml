@@ -1,5 +1,5 @@
 [package]
-name = "grepit-output"
+name = "grep4ai-output"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,7 +9,7 @@ description = "Output formatters for grep4ai — JSON, JSONL, compact, and human
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
-grepit-searcher = { workspace = true }
-grepit-ranker = { workspace = true }
-grepit-context = { workspace = true }
-grepit-tokens = { workspace = true }
+grep4ai-searcher = { workspace = true }
+grep4ai-ranker = { workspace = true }
+grep4ai-context = { workspace = true }
+grep4ai-tokens = { workspace = true }

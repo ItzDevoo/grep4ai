@@ -1,7 +1,7 @@
 //! Relevance scoring algorithm.
 
 use crate::signals::SignalSet;
-use grepit_searcher::RawMatch;
+use grep4ai_searcher::RawMatch;
 
 /// A match with its computed relevance score.
 #[derive(Debug, Clone)]

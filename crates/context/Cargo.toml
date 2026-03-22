@@ -1,11 +1,11 @@
 [package]
-name = "grepit-context"
+name = "grep4ai-context"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Smart context windowing for grep4ai search results"
 
 [dependencies]
-grepit-searcher = { workspace = true }
-grepit-ranker = { workspace = true }
+grep4ai-searcher = { workspace = true }
+grep4ai-ranker = { workspace = true }
 anyhow = { workspace = true }

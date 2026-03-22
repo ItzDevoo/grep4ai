@@ -1,9 +1,9 @@
 [package]
-name = "grepit-tokens"
+name = "grep4ai-tokens"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Token counting and budget enforcement for grepit"
+description = "Token counting and budget enforcement for grep4ai"
 
 [dependencies]
 anyhow = { workspace = true }
