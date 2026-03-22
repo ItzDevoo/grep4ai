@@ -1,0 +1,10 @@
+[package]
+name = "grepit-ranker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Relevance scoring and deduplication for grepit search results"
+
+[dependencies]
+grepit-searcher = { workspace = true }
+anyhow = { workspace = true }

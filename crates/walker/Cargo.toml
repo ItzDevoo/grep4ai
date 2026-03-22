@@ -1,0 +1,12 @@
+[package]
+name = "grepit-walker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Parallel, gitignore-aware directory traversal for grepit"
+
+[dependencies]
+ignore = { workspace = true }
+crossbeam-channel = { workspace = true }
+rayon = { workspace = true }
+anyhow = { workspace = true }

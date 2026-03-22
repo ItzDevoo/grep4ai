@@ -1,0 +1,11 @@
+[package]
+name = "grepit-context"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Smart context windowing for grepit search results"
+
+[dependencies]
+grepit-searcher = { workspace = true }
+grepit-ranker = { workspace = true }
+anyhow = { workspace = true }

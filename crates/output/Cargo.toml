@@ -1,0 +1,15 @@
+[package]
+name = "grepit-output"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Output formatters for grepit — JSON, JSONL, compact, and human-readable"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+grepit-searcher = { workspace = true }
+grepit-ranker = { workspace = true }
+grepit-context = { workspace = true }
+grepit-tokens = { workspace = true }

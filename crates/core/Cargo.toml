@@ -1,0 +1,21 @@
+[package]
+name = "grepit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The fastest grep tool built for AI agents"
+
+[[bin]]
+name = "grepit"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+anyhow = { workspace = true }
+serde_json = { workspace = true }
+grepit-walker = { workspace = true }
+grepit-searcher = { workspace = true }
+grepit-ranker = { workspace = true }
+grepit-context = { workspace = true }
+grepit-output = { workspace = true }
+grepit-tokens = { workspace = true }

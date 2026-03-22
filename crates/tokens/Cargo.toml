@@ -1,0 +1,9 @@
+[package]
+name = "grepit-tokens"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Token counting and budget enforcement for grepit"
+
+[dependencies]
+anyhow = { workspace = true }

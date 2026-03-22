@@ -1,0 +1,45 @@
+[workspace]
+members = [
+    "crates/core",
+    "crates/searcher",
+    "crates/ranker",
+    "crates/context",
+    "crates/output",
+    "crates/tokens",
+    "crates/walker",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/cli-anything/grepit"
+description = "The fastest grep tool built for AI agents"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1"
+anyhow = "1"
+thiserror = "2"
+rayon = "1"
+crossbeam-channel = "0.5"
+memmap2 = "0.9"
+ignore = "0.4"
+clap = { version = "4", features = ["derive", "env"] }
+
+# Workspace internal crates
+grepit-searcher = { path = "crates/searcher" }
+grepit-ranker = { path = "crates/ranker" }
+grepit-context = { path = "crates/context" }
+grepit-output = { path = "crates/output" }
+grepit-tokens = { path = "crates/tokens" }
+grepit-walker = { path = "crates/walker" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
