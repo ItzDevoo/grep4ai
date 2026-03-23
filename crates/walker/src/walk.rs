@@ -1,6 +1,6 @@
 //! Parallel directory walker wrapping the `ignore` crate.
 
-use crate::filetype::{classify_file_type, FileType};
+use crate::filetype::{classify_file_type, resolve_type_alias, FileType};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use ignore::WalkBuilder;
 use std::path::{Path, PathBuf};
@@ -130,12 +130,22 @@ impl Walker {
 
                 let file_type = classify_file_type(&path);
 
-                // Apply type filters
-                if !include_types.is_empty() && !include_types.iter().any(|t| t == file_type.name())
+                // Apply type filters (resolve aliases like "js" → "javascript")
+                if !include_types.is_empty()
+                    && !include_types.iter().any(|t| {
+                        resolve_type_alias(t)
+                            .map_or(t.as_str() == file_type.name(), |resolved| {
+                                resolved == file_type.name()
+                            })
+                    })
                 {
                     return ignore::WalkState::Continue;
                 }
-                if exclude_types.iter().any(|t| t == file_type.name()) {
+                if exclude_types.iter().any(|t| {
+                    resolve_type_alias(t).map_or(t.as_str() == file_type.name(), |resolved| {
+                        resolved == file_type.name()
+                    })
+                }) {
                     return ignore::WalkState::Continue;
                 }
 

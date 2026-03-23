@@ -21,6 +21,8 @@ pub enum OutputFormat {
     JsonLines,
     Compact,
     Human,
+    FilesOnly,
+    Count,
 }
 
 impl std::str::FromStr for OutputFormat {
@@ -31,8 +33,10 @@ impl std::str::FromStr for OutputFormat {
             "jsonl" | "jsonlines" => Ok(Self::JsonLines),
             "compact" => Ok(Self::Compact),
             "human" => Ok(Self::Human),
+            "files" | "files-only" => Ok(Self::FilesOnly),
+            "count" => Ok(Self::Count),
             _ => Err(format!(
-                "Unknown output format: '{s}'. Expected: json, jsonl, compact, human"
+                "Unknown output format: '{s}'. Expected: json, jsonl, compact, human, files, count"
             )),
         }
     }
@@ -90,5 +94,40 @@ pub fn write_output<W: Write>(
             duration_ms,
             config,
         ),
+        OutputFormat::FilesOnly => write_files_only(writer, matches),
+        OutputFormat::Count => write_count(writer, matches),
     }
+}
+
+/// Write only unique file paths, one per line.
+fn write_files_only<W: Write>(
+    writer: &mut W,
+    matches: Vec<ContextualMatch>,
+) -> anyhow::Result<()> {
+    let mut seen = std::collections::HashSet::new();
+    for m in &matches {
+        let path = m.scored.raw.path.display().to_string();
+        if seen.insert(path.clone()) {
+            writeln!(writer, "{path}")?;
+        }
+    }
+    Ok(())
+}
+
+/// Write match counts grouped by file.
+fn write_count<W: Write>(writer: &mut W, matches: Vec<ContextualMatch>) -> anyhow::Result<()> {
+    let mut counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut order: Vec<String> = Vec::new();
+    for m in &matches {
+        let path = m.scored.raw.path.display().to_string();
+        let entry = counts.entry(path.clone()).or_insert_with(|| {
+            order.push(path);
+            0
+        });
+        *entry += 1;
+    }
+    for path in &order {
+        writeln!(writer, "{}:{}", path, counts[path])?;
+    }
+    Ok(())
 }

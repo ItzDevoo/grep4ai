@@ -7,6 +7,6 @@ mod filetype;
 mod gitaware;
 mod walk;
 
-pub use filetype::{classify_file_type, FileType};
+pub use filetype::{classify_file_type, resolve_type_alias, FileType};
 pub use gitaware::find_repo_root;
 pub use walk::{FileEntry, Walker, WalkerConfig};

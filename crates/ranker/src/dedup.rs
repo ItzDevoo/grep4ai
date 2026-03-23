@@ -14,7 +14,7 @@ pub struct DedupConfig {
 
 impl Default for DedupConfig {
     fn default() -> Self {
-        Self { threshold: 3 }
+        Self { threshold: 2 }
     }
 }
 
