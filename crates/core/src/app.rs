@@ -66,10 +66,15 @@ pub fn run(args: Args) -> Result<u64> {
     }
 
     // ── 3. Rank results ─────────────────────────────────────────────
-    let output_format: OutputFormat = args
-        .format
-        .parse()
-        .map_err(|e: String| anyhow::anyhow!(e))?;
+    let output_format: OutputFormat = if args.files_only {
+        OutputFormat::FilesOnly
+    } else if args.count {
+        OutputFormat::Count
+    } else {
+        args.format
+            .parse()
+            .map_err(|e: String| anyhow::anyhow!(e))?
+    };
     let should_rank = args.rank || (!args.no_rank && output_format == OutputFormat::Json);
 
     let rank_config = RankConfig {
@@ -82,7 +87,9 @@ pub fn run(args: Args) -> Result<u64> {
 
     // ── 4. Deduplicate if requested ─────────────────────────────────
     let scored_matches = if args.dedup {
-        let dedup_config = DedupConfig::default();
+        let dedup_config = DedupConfig {
+            threshold: args.dedup_threshold,
+        };
         let result = deduplicate(scored_matches, &dedup_config);
         if args.debug {
             eprintln!(

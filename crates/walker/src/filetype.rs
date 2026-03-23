@@ -111,6 +111,47 @@ pub fn classify_file_type(path: &Path) -> FileType {
     }
 }
 
+/// Resolve a user-provided type alias to the canonical FileType name.
+///
+/// Accepts both short aliases (`js`, `ts`, `py`, `rb`, `sh`, `md`, `yml`)
+/// and canonical names (`javascript`, `typescript`, `python`, etc.).
+pub fn resolve_type_alias(alias: &str) -> Option<&'static str> {
+    match alias.to_lowercase().as_str() {
+        // Canonical names
+        "rust" => Some("rust"),
+        "python" => Some("python"),
+        "javascript" => Some("javascript"),
+        "typescript" => Some("typescript"),
+        "go" => Some("go"),
+        "java" => Some("java"),
+        "c" => Some("c"),
+        "cpp" | "c++" | "cxx" => Some("cpp"),
+        "ruby" => Some("ruby"),
+        "shell" | "bash" => Some("shell"),
+        "markdown" => Some("markdown"),
+        "json" => Some("json"),
+        "yaml" => Some("yaml"),
+        "toml" => Some("toml"),
+        "html" => Some("html"),
+        "css" => Some("css"),
+        "sql" => Some("sql"),
+        "protobuf" | "proto" => Some("protobuf"),
+        "dockerfile" | "docker" => Some("dockerfile"),
+        // Short aliases
+        "rs" => Some("rust"),
+        "py" => Some("python"),
+        "js" | "jsx" | "mjs" | "cjs" => Some("javascript"),
+        "ts" | "tsx" | "mts" | "cts" => Some("typescript"),
+        "rb" => Some("ruby"),
+        "sh" | "zsh" | "fish" => Some("shell"),
+        "md" | "mdx" => Some("markdown"),
+        "yml" => Some("yaml"),
+        "htm" => Some("html"),
+        "scss" | "sass" | "less" => Some("css"),
+        _ => None,
+    }
+}
+
 impl std::fmt::Display for FileType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.name())
@@ -152,6 +193,32 @@ mod tests {
             classify_file_type(&PathBuf::from("Dockerfile.prod")),
             FileType::Dockerfile
         );
+    }
+
+    #[test]
+    fn test_resolve_type_alias_short_names() {
+        assert_eq!(resolve_type_alias("js"), Some("javascript"));
+        assert_eq!(resolve_type_alias("ts"), Some("typescript"));
+        assert_eq!(resolve_type_alias("py"), Some("python"));
+        assert_eq!(resolve_type_alias("rb"), Some("ruby"));
+        assert_eq!(resolve_type_alias("sh"), Some("shell"));
+        assert_eq!(resolve_type_alias("rs"), Some("rust"));
+        assert_eq!(resolve_type_alias("md"), Some("markdown"));
+        assert_eq!(resolve_type_alias("yml"), Some("yaml"));
+    }
+
+    #[test]
+    fn test_resolve_type_alias_canonical_names() {
+        assert_eq!(resolve_type_alias("javascript"), Some("javascript"));
+        assert_eq!(resolve_type_alias("typescript"), Some("typescript"));
+        assert_eq!(resolve_type_alias("python"), Some("python"));
+        assert_eq!(resolve_type_alias("rust"), Some("rust"));
+    }
+
+    #[test]
+    fn test_resolve_type_alias_unknown() {
+        assert_eq!(resolve_type_alias("fortran"), None);
+        assert_eq!(resolve_type_alias("cobol"), None);
     }
 
     #[test]

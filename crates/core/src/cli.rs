@@ -33,6 +33,14 @@ pub struct Args {
     #[arg(long = "no-stats")]
     pub no_stats: bool,
 
+    /// Print only file paths that contain matches (like rg -l).
+    #[arg(short = 'l', long = "files-only")]
+    pub files_only: bool,
+
+    /// Print only the count of matches per file.
+    #[arg(long = "count")]
+    pub count: bool,
+
     // ── Search Options ──────────────────────────────────────────────
     /// Case-insensitive search.
     #[arg(short = 'i', long = "ignore-case")]
@@ -111,6 +119,10 @@ pub struct Args {
     /// Collapse near-duplicate results.
     #[arg(long)]
     pub dedup: bool,
+
+    /// Minimum duplicates before collapsing (default: 2). Only used with --dedup.
+    #[arg(long = "dedup-threshold", default_value = "2")]
+    pub dedup_threshold: usize,
 
     /// Maximum number of results to return.
     #[arg(long = "max-results", default_value = "100")]
